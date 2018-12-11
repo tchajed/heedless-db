@@ -51,4 +51,9 @@ executables:
 tests:
   spec:
     defaults: hspec/hspec@master
-    dependencies: heedless-db
+    default-extensions:
+    - OverloadedStrings
+    dependencies:
+    - heedless-db
+    - bytestring
+    - cereal

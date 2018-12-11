@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types, OverloadedStrings #-}
+{-# LANGUAGE Rank2Types #-}
 module Database.Filesys.MemFsSpec (spec) where
 
 import Test.Hspec
