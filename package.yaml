@@ -31,6 +31,8 @@ library:
     - unix
     - unix-bytestring
     - cereal
+  ghc-options:
+    - -Wno-name-shadowing
 
 executables:
   heedless-db-exe:

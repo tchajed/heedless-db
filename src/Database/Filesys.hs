@@ -1,26 +1,31 @@
+{-# LANGUAGE TypeFamilies #-}
 module Database.Filesys where
 
-import qualified Data.ByteString as BS
-import qualified System.Posix.Types
+import           Data.ByteString (ByteString)
 
 -- A filename (should not contain any path separators).
 type FName = String
--- A File is a handle to an open file.
-type File = System.Posix.Types.Fd
 
--- Filesys is an abstraction of the filesystem exposing a single directory and
--- only the APIs used by the database.
-data Filesys = Filesys {
-    -- reading
-    open :: FName -> IO File
-  , list :: IO [FName]
-  , size :: File -> IO Int
-  , readAt :: Int -> Int -> IO BS.ByteString
+-- A MonadFilesys is an abstraction of the filesystem exposing a single
+-- directory and only the APIs used by the database.
+class Monad m => MonadFilesys m where
+  type File m :: *
+  -- reading
+  open :: FName -> m (File m)
+  list :: m [FName]
+  size :: File m -> m Int
+  -- readAt offset length
+  readAt :: Int -> Int -> m ByteString
 
-    -- modifying
-  , create :: FName -> IO File
-  , append :: File -> BS.ByteString -> IO ()
-  , delete :: FName -> IO ()
-  , truncate :: FName -> IO ()
-  , atomicCreate :: FName -> BS.ByteString -> IO ()
-  }
+  -- modifying
+  create :: FName -> m (File m)
+  append :: File m -> ByteString -> m ()
+  delete :: FName -> m ()
+  truncate :: FName -> m ()
+  atomicCreate :: FName -> ByteString -> m ()
+
+readAll :: MonadFilesys m => File m -> m ByteString
+readAll f = do
+  sz <- size f
+  -- TODO: do this in max-sized chunks
+  readAt 0 sz
