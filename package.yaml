@@ -26,11 +26,13 @@ library:
   source-dirs: src
   dependencies:
     - hashtables
+    - hashable
     - array
     - bytestring
     - unix
     - unix-bytestring
     - cereal
+    - mtl
   ghc-options:
     - -Wno-name-shadowing
 

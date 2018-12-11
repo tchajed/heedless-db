@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Database.Filesys where
 
-import           Data.ByteString (ByteString)
+import Data.ByteString (ByteString)
 
 -- A filename (should not contain any path separators).
 type FName = String
@@ -15,7 +15,7 @@ class Monad m => MonadFilesys m where
   list :: m [FName]
   size :: File m -> m Int
   -- readAt offset length
-  readAt :: Int -> Int -> m ByteString
+  readAt :: File m -> Int -> Int -> m ByteString
 
   -- modifying
   create :: FName -> m (File m)
@@ -24,8 +24,10 @@ class Monad m => MonadFilesys m where
   truncate :: FName -> m ()
   atomicCreate :: FName -> ByteString -> m ()
 
+  close :: File m -> m ()
+
 readAll :: MonadFilesys m => File m -> m ByteString
 readAll f = do
   sz <- size f
   -- TODO: do this in max-sized chunks
-  readAt 0 sz
+  readAt f 0 sz
