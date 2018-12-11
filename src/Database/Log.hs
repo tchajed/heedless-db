@@ -1,6 +1,5 @@
 module Database.Log
-  ( File
-  , add
+  ( add
   , recoverTxns
   ) where
 
@@ -40,12 +39,12 @@ getEntry = do
         else fail "expected commit record"
     CommitRecord -> fail "expected data record"
 
-add :: MonadFilesys m => File m -> ByteString -> m ()
+add :: MonadFilesys m fh => fh -> ByteString -> m ()
 add f bs =
   let d = runPut (putEntry bs) in
   append f d
 
-recoverTxns :: MonadFilesys m => File m -> m [ByteString]
+recoverTxns :: MonadFilesys m fh => fh -> m [ByteString]
 recoverTxns f = do
   d <- readAll f
   -- TODO: this should tolerate partial writes

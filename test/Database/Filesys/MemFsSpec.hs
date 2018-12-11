@@ -5,7 +5,7 @@ import qualified Database.Filesys.MemFs as MemFs
 import           Database.Filesys.Utils
 import           Test.Hspec
 
-makeFoo :: MemFs.M s (File (MemFs.M s))
+makeFoo :: MemFs.M FName
 makeFoo = do
   f <- create "foo"
   append f "hello"
