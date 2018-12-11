@@ -21,7 +21,7 @@ class Monad m => MonadFilesys m where
   create :: FName -> m (File m)
   append :: File m -> ByteString -> m ()
   delete :: FName -> m ()
-  truncate :: FName -> m ()
+  ftruncate :: FName -> m ()
   atomicCreate :: FName -> ByteString -> m ()
 
   close :: File m -> m ()

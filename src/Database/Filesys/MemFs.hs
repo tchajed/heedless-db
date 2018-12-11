@@ -20,7 +20,9 @@ type HashTable s k v = H.HashTable s k v
 type FilesysState s = HashTable s FName ByteString
 
 type FsMonad s a = ReaderT (FilesysState s) (ST s) a
-newtype M s a = M (FsMonad s a) deriving (Functor, Applicative, Monad)
+
+newtype M s a = M (FsMonad s a)
+  deriving (Functor, Applicative, Monad)
 
 getReader :: M s a -> FsMonad s a
 getReader (M p) = p
@@ -55,6 +57,6 @@ instance MonadFilesys (M s) where
     (Just (BS.append contents bs), ())
   delete f = withTable $ \ht ->
     H.delete ht f
-  truncate f = withExistingFile f $
+  ftruncate f = withExistingFile f $
     const (Just BS.empty, ())
   close _ = return ()
