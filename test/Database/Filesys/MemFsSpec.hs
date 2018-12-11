@@ -1,15 +1,9 @@
-{-# LANGUAGE Rank2Types #-}
 module Database.Filesys.MemFsSpec (spec) where
 
-import Test.Hspec
-import Database.Filesys
+import           Database.Filesys
 import qualified Database.Filesys.MemFs as MemFs
-
-{-# ANN module ("HLint: ignore Redundant do" :: String) #-}
-
-shouldProduce :: (Show a, Eq a) => (forall s. MemFs.M s a) -> a -> Expectation
-shouldProduce p x =
-  MemFs.run p `shouldBe` x
+import           Database.Filesys.Utils
+import           Test.Hspec
 
 makeFoo :: MemFs.M s (File (MemFs.M s))
 makeFoo = do
