@@ -1,15 +1,16 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Database.Filesys.MemFs
-  ( M
-  , run
+  ( HasFilesysCache(..)
+  , FilesysCache(..)
+  , newCache
   ) where
 
 import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Reader ( ReaderT
-                                       , MonadReader
-                                       , runReaderT
-                                       , ask)
+import           Control.Monad.Reader ( MonadReader
+                                      , reader)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.HashTable.IO as H
@@ -18,27 +19,27 @@ import           Database.Filesys
 {-# ANN module ("HLint: ignore Use &&&" :: String) #-}
 
 type HashTable k v = H.BasicHashTable k v
-newtype FilesysState = FilesysState (HashTable FName ByteString)
+newtype FilesysCache = FilesysCache (HashTable FName ByteString)
 
-newtype M a = M (ReaderT FilesysState IO a)
-  deriving (Functor, Applicative, Monad, MonadReader FilesysState, MonadIO)
+class HasFilesysCache env where
+  filesysCache :: env -> FilesysCache
 
-run :: M a -> IO a
-run (M p) = do
-  ht <- H.new
-  runReaderT p (FilesysState ht)
+newCache :: IO FilesysCache
+newCache = FilesysCache <$> H.new
 
-withFs :: (HashTable FName ByteString -> IO a) -> M a
+withFs :: (MonadReader env m, HasFilesysCache env, MonadIO m) =>
+          (HashTable FName ByteString -> IO a) -> m a
 withFs act = do
-  FilesysState ht <- ask
+  FilesysCache ht <- reader filesysCache
   liftIO $ act ht
 
-withExistingFile :: FName -> (ByteString -> (Maybe ByteString, a)) -> M a
+withExistingFile :: (MonadReader env m, HasFilesysCache env, MonadIO m) =>
+                    FName -> (ByteString -> (Maybe ByteString, a)) -> m a
 withExistingFile name f = withFs $ \ht -> H.mutate ht name op
   where op (Just contents) = f contents
         op Nothing = error $ "use of file " ++ name ++ " that does not exist"
 
-instance FilesysLayer FName M where
+instance (MonadReader env m, HasFilesysCache env, MonadIO m) => FilesysLayer FName m where
   open = return
   list = withFs $ \ht -> H.foldM (\l (k, _) -> return $ k:l) [] ht
   size f = withExistingFile f $ \bs ->

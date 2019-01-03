@@ -1,11 +1,12 @@
 module Database.Filesys.MemFsSpec (spec) where
 
+import           Control.Monad.Reader (MonadReader, MonadIO)
 import           Database.Filesys
 import qualified Database.Filesys.MemFs as MemFs
 import           Database.Filesys.Utils
 import           Test.Hspec
 
-makeFoo :: MemFs.M FName
+makeFoo :: (MonadReader env m, MemFs.HasFilesysCache env, MonadIO m) => m FilePath
 makeFoo = do
   f <- create "foo"
   append f "hello"

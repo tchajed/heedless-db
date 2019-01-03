@@ -1,15 +1,16 @@
 {-# LANGUAGE PackageImports #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+
+-- we're apparently doing something odd with typeclasses
+{-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Database.Filesys.UnixFs
-  ( M
-  , run ) where
+  ( HasFilesysRoot(..)
+  ) where
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Control.Monad.Reader ( ReaderT
-                            , MonadReader
-                            , runReaderT
-                            , ask)
+import Control.Monad.Reader ( MonadReader
+                            , reader )
 import Control.Monad (when)
 import Database.Filesys
 import System.Directory (listDirectory, removeFile)
@@ -22,40 +23,39 @@ import qualified System.Posix.IO as PosixIO
 import System.Posix.Types (Fd)
 import qualified Data.ByteString as BS
 
-newtype M a = M (ReaderT FilePath IO a)
-  deriving (Functor, Applicative, Monad, MonadReader FilePath, MonadIO)
+class HasFilesysRoot env where
+  filesysRoot :: env -> FilePath
 
-withRoot :: (FilePath -> IO a) -> M a
+withRoot :: (MonadReader env m, HasFilesysRoot env, MonadIO m) =>
+            (FilePath -> IO a) -> m a
 withRoot act = do
-  root <- ask
+  root <- reader filesysRoot
   liftIO $ act root
 
-run :: FilePath -> M a -> IO a
-run root (M act) = runReaderT act root
+resolvePath :: (MonadReader env m, HasFilesysRoot env, MonadIO m) =>
+               (FilePath -> IO a) -> FilePath -> m a
+resolvePath act f = withRoot $ \root -> act (joinPath [root, f])
 
-join :: FilePath -> FilePath -> FilePath
-join p1 p2 = joinPath [p1, p2]
-
-instance FilesysLayer Fd M where
-  open f = let perms = Nothing
-               mode = PosixIO.defaultFileFlags in
-           withRoot $ \root -> openFd (root `join` f) ReadOnly perms mode
-  create f = let perms = Just 0644
-                 mode = PosixIO.defaultFileFlags {PosixIO.append=True} in
-             withRoot $ \root -> openFd (root `join` f) ReadWrite perms mode
+instance (MonadIO m, MonadReader env m, HasFilesysRoot env) => FilesysLayer Fd m where
+  open = let perms = Nothing
+             mode = PosixIO.defaultFileFlags in
+           resolvePath $ \f -> openFd f ReadOnly perms mode
+  create = let perms = Just 0644
+               mode = PosixIO.defaultFileFlags {PosixIO.append=True} in
+             resolvePath $ \f -> openFd f ReadWrite perms mode
   list = withRoot $ \root -> listDirectory root
   size f = liftIO $ do
     s <- getFdStatus f
     return $ fromIntegral . fileSize $ s
   close f = liftIO $ closeFd f
-  delete f = withRoot $ \root -> removeFile (root `join` f)
+  delete = resolvePath $ \f -> removeFile f
   ftruncate f = liftIO $ setFileSize f 0
   readAt f off len = liftIO $ fdPread f (fromIntegral len) (fromIntegral off)
   append f bs = liftIO $ do
     count <- fdWrite f bs
     when (fromIntegral count < BS.length bs) $ error "short read"
   atomicCreate f bs = withRoot $ \root -> do
-    let dstFile = root `join` f
+    let dstFile = joinPath [root, f]
     let tmpFile = dstFile ++ ".tmp"
     BS.writeFile tmpFile bs
     rename tmpFile dstFile
