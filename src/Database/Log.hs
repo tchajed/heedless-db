@@ -39,12 +39,12 @@ getEntry = do
         else fail "expected commit record"
     CommitRecord -> fail "expected data record"
 
-add :: MonadFilesys m fh => fh -> ByteString -> m ()
+add :: FilesysLayer fh m => fh -> ByteString -> m ()
 add f bs =
   let d = runPut (putEntry bs) in
   append f d
 
-recoverTxns :: MonadFilesys m fh => fh -> m [ByteString]
+recoverTxns :: FilesysLayer fh m => fh -> m [ByteString]
 recoverTxns f = do
   d <- readAll f
   -- TODO: this should tolerate partial writes

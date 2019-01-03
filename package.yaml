@@ -33,6 +33,8 @@ library:
     - unix-bytestring
     - cereal
     - mtl
+    - filepath
+    - directory
   ghc-options:
     - -Wno-name-shadowing
 
